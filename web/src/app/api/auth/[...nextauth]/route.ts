@@ -1,18 +1,29 @@
 import NextAuth from "next-auth"
-import Credentials from "next-auth/providers/credentials"
+import CredentialsProvider from "next-auth/providers/credentials"
 import type { NextAuthOptions } from "next-auth"
 import type { User } from "@/types/user"
 
+type AuthResponse = {
+  success: boolean
+  data?: {
+    user: User
+    token: string
+  }
+  message?: string
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
-    Credentials({
-      name: "Credentials",
+    CredentialsProvider({
+      name: "credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+        password: { label: "Senha", type: "password" },
       },
       async authorize(credentials): Promise<User | null> {
-        if (!credentials?.email || !credentials?.password) return null
+        if (!credentials?.email || !credentials?.password) {
+          return null
+        }
 
         try {
           const res = await fetch(`http://localhost:3001/auth/login`, {
@@ -24,13 +35,16 @@ export const authOptions: NextAuthOptions = {
             }),
           })
 
-          if (!res.ok) return null
+          const responseData = await res.json()
 
-          const user: User = await res.json()
+          if (!responseData.success) return null
 
-          if (!user?.token) return null
+          const user: User = responseData.data.user
+          const token = responseData.data.token
 
-          return user
+          if (!token) return null
+
+          return { ...user, token }
         } catch (error) {
           console.error("Erro ao autenticar:", error)
           return null
@@ -39,31 +53,40 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
 
-  pages: {
-    signIn: "/signin", // página de login personalizada
-  },
   session: {
     strategy: "jwt",
+  },
+
+  pages: {
+    signIn: "/signin",
   },
 
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        const typedUser = user as User
-        token.accessToken = typedUser.token
-        token.role = typedUser.role
+        const u = user as User
+        token.accessToken = u.token
+        token.role = u.role
+        token.name = u.name
+        token.email = u.email
       }
       return token
     },
 
     async session({ session, token }) {
-      if (session.user) {
-        session.user.role = token.role as User["role"]
-        session.accessToken = token.accessToken as string
+      session.user = {
+        id: (token.sub as string) || "", // Use token.sub if you want
+        name: token.name,
+        email: token.email,
+        role: token.role,
+        token: token.accessToken,
       }
+      session.accessToken = token.accessToken
       return session
     },
   },
+
+  secret: process.env.NEXTAUTH_SECRET,
 }
 
 const handler = NextAuth(authOptions)
