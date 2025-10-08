@@ -13,7 +13,7 @@ type AuthResponse = {
   message?: string
 }
 
-export const authOptions: NextAuthOptions = {
+const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
