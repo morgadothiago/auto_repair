@@ -1,63 +1,125 @@
-import { Calendar, Home, Inbox, Search, Settings } from "lucide-react"
-
+import {
+  Calendar,
+  DollarSign,
+  Home,
+  Inbox,
+  Search,
+  Settings,
+  ToolCaseIcon,
+  Users,
+} from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { useAuth } from "@/app/context/AuthContext"
+import { useEffect } from "react"
+import { useRouter, usePathname } from "next/navigation"
 
-// Menu items.
-const items = [
+// Menu items com roles
+export const menuItems = [
   {
-    title: "Home",
-    url: "#",
+    title: "Dashboard",
+    url: "/dashboard",
     icon: Home,
+    roles: ["admin", "user"],
   },
   {
-    title: "Inbox",
-    url: "#",
-    icon: Inbox,
-  },
-  {
-    title: "Calendar",
-    url: "#",
+    title: "Agendamentos",
+    url: "/appointments",
     icon: Calendar,
+    roles: ["admin", "user"],
   },
+  { title: "Clientes", url: "/clients", icon: Users, roles: ["admin", "user"] },
   {
-    title: "Search",
-    url: "#",
-    icon: Search,
+    title: "Serviços",
+    url: "/services",
+    icon: ToolCaseIcon,
+    roles: ["admin", "user"],
   },
+  { title: "Faturamento", url: "/billing", icon: DollarSign, roles: ["admin"] },
   {
-    title: "Settings",
-    url: "#",
+    title: "Configurações",
+    url: "/settings",
     icon: Settings,
+    roles: ["admin"],
   },
 ]
 
 export function AppSidebar() {
+  const { isAuthenticated, user } = useAuth()
+  const router = useRouter()
+  const pathname = usePathname()
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/signin") // redireciona para página de login
+    }
+  }, [isAuthenticated, router])
+
   return (
     <Sidebar>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Application</SidebarGroupLabel>
-          <SidebarGroupContent>
+          <SidebarGroupLabel className="w-full h-16 flex items-center">
+            <SidebarHeader className="px-4 py-2">
+              <div className="flex items-center gap-4">
+                {/* Quadrado preto */}
+                <div className="w-10 h-10 rounded-md bg-black"></div>
+
+                {/* Texto ao lado */}
+                <h1 className="text-black text-lg font-semibold">
+                  Auto Repair
+                </h1>
+              </div>
+            </SidebarHeader>
+          </SidebarGroupLabel>
+
+          <SidebarGroupContent className="px-2">
+            {user?.role && (
+              <h1 className="text-black text-lg font-semibold mb-4">
+                Área do {user.role === "admin" ? "Administrador" : "Mecanico"}
+              </h1>
+            )}
+
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <a href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {menuItems
+                .filter((item) => user?.role && item.roles.includes(user.role))
+                .map((item) => {
+                  const isActive = pathname === item.url
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild className="mb-1">
+                        <a
+                          href={item.url}
+                          className={`flex h-10 items-center gap-2 px-4 py-2 rounded-md transition-colors duration-200 ${
+                            isActive
+                              ? "bg-black text-white shadow-md"
+                              : "text-gray-700 hover:bg-gray-100 hover:text-black"
+                          }`}
+                        >
+                          <item.icon className="h-5 w-5" />
+                          <span
+                            className={
+                              isActive
+                                ? "text-white font-semibold"
+                                : "text-black"
+                            }
+                          >
+                            {item.title}
+                          </span>
+                        </a>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

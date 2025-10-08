@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
+import { useAuth } from "@/app/context/AuthContext"
 import { useRouter } from "next/navigation"
-import { useAuth } from "../context/AuthContext"
+import { useEffect } from "react"
 
 export default function Dashboard() {
-  const router = useRouter()
   const { isAuthenticated, isLoading, user } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -24,8 +24,8 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h1>Bem-vindo ao dashboard!, {user?.role}</h1>
-      {/* conteúdo do dashboard */}
+      <h1>Dashboard</h1>
+      <p>Bem-vindo, {user?.name}!</p>
     </div>
   )
 }

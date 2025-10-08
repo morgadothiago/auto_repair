@@ -1,18 +1,7 @@
 "use client"
 
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from "react"
-import {
-  useSession,
-  signIn as nextAuthSignIn,
-  signOut as nextAuthSignOut,
-} from "next-auth/react"
-import { useRouter } from "next/navigation"
+import React, { createContext, useContext } from "react"
+import { useSession, signIn, signOut } from "next-auth/react"
 
 interface User {
   name?: string | null
@@ -22,62 +11,25 @@ interface User {
 }
 
 interface AuthContextType {
-  user: User | null
-  isLoading: boolean
   isAuthenticated: boolean
-  signIn: (email: string, password: string) => Promise<void>
-  signOut: () => void
+  isLoading: boolean
+  user: User | null
+  signIn: typeof signIn
+  signOut: typeof signOut
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-interface AuthProviderProps {
-  children: ReactNode
-}
-
-export function AuthProvider({ children }: AuthProviderProps) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession()
-  const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
-
   const isLoading = status === "loading"
   const isAuthenticated = !!session?.user
 
-  useEffect(() => {
-    if (session?.user) {
-      setUser(session.user as User)
-    } else {
-      setUser(null)
-    }
-  }, [session])
-
-  async function signIn(email: string, password: string) {
-    const res = await nextAuthSignIn("credentials", {
-      redirect: false,
-      email,
-      password,
-    })
-
-    if (res?.ok) {
-      router.push("/dashboard")
-    } else {
-      throw new Error("Falha ao fazer login")
-    }
-  }
-
-  function signOut() {
-    nextAuthSignOut({ redirect: true, callbackUrl: "/signin" })
-  }
+  const user = session?.user || null
 
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated,
-        signIn,
-        signOut,
-      }}
+      value={{ isAuthenticated, isLoading, user, signIn, signOut }}
     >
       {children}
     </AuthContext.Provider>
@@ -86,8 +38,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
 export function useAuth() {
   const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error("useAuth deve ser usado dentro de um AuthProvider")
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider")
   }
   return context
 }

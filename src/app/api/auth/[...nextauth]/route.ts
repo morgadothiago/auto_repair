@@ -1,93 +1,86 @@
-import NextAuth from "next-auth"
+import NextAuth, { Account, Session } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import type { NextAuthOptions } from "next-auth"
-import type { User } from "@/types/user"
+import { compare } from "bcryptjs"
+import prisma from "@/lib/prisma"
+import { sign } from "jsonwebtoken"
+import { JWT } from "next-auth/jwt"
+import { User } from "@/types/user"
 
-type AuthResponse = {
-  success: boolean
-  data?: {
-    user: User
-    token: string
-  }
-  message?: string
-}
 
-export const authOptions: NextAuthOptions = {
+export const authOptions = {
+  session: {
+    strategy: "jwt",
+  },
   providers: [
     CredentialsProvider({
-      name: "credentials",
+      name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Senha", type: "password" },
+        password: { label: "Password", type: "password" },
       },
-      async authorize(credentials): Promise<User | null> {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           return null
         }
 
-        try {
-          const res = await fetch(`http://localhost:3001/auth/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: credentials.email,
-              password: credentials.password,
-            }),
-          })
+        const user = await prisma.user.findUnique({
+          where: {
+            email: credentials.email,
+          },
+        })
 
-          const responseData: AuthResponse = await res.json()
+        if (!user) {
+          throw new Error("No user found with the given email!")
+        }
 
-          if (!responseData.success || !responseData.data) return null
+        const checkPassword = await compare(
+          credentials!.password,
+          user.password
+        )
 
-          const { user, token } = responseData.data
-
-          if (!token) return null
-
-          return { ...user, token }
-        } catch (error) {
-          console.error("Erro ao autenticar:", error)
-          return null
+        if (!checkPassword) {
+          throw new Error("Password doesn't match!")
+        }
+        return {
+          email: user.email,
+          name: user.name,
+          id: user.id,
+          role: user.role,
         }
       },
     }),
   ],
 
-  session: {
-    strategy: "jwt",
-  },
-
-  pages: {
-    signIn: "/signin",
-  },
-
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        const u = user as User
-        token.accessToken = u.token
-        token.role = u.role
-        token.name = u.name
-        token.email = u.email
-        token.sub = u.id // opcional: garante id no token.sub
-      }
+    async jwt({ token, user, account }: { token: JWT; user: User; account: Account }) {
+      if (account && user) {
+          token.accessToken = sign(
+            { userId: user.id, email: user.email, name: user.name, role: user.role },
+            process.env.NEXTAUTH_SECRET as string,
+            { expiresIn: "1h" }
+          );
+          token.id = user.id;
+          token.name = user.name;
+          token.email = user.email;
+          token.role = user.role;
+        }
       return token
     },
-
-    async session({ session, token }) {
-      session.user = {
-        id: token.sub ?? "",
-        name: token.name ?? "",
-        email: token.email ?? "",
-        role: token.role ?? "",
-        token: token.accessToken ?? "",
+    async session({ session, token }: { session: Session; token: JWT }) {
+      if (token) {
+        session.user.id = token.id
+        session.user.name = token.name
+        session.user.email = token.email as string
+        session.user.role = token.role as string
+        session.accessToken = token.accessToken as string
       }
-      session.accessToken = token.accessToken ?? ""
       return session
     },
   },
-
-  secret: process.env.NEXTAUTH_SECRET,
+  pages: {
+    signIn: "/signin",
+  },
 }
 
-const handler = NextAuth(authOptions)
+const handler = NextAuth(authOptions as any)
 export { handler as GET, handler as POST }
