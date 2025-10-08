@@ -1,34 +1,66 @@
+"use client"
+
+import {
+  Sidebar,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar"
+import { Home, Settings } from "lucide-react"
+import { AppSidebar } from "../components/SideBar"
+import { Button } from "@/components/ui/button"
+
+const sidebarNavItems = [
+  {
+    title: "Platform",
+    items: [
+      { href: "/dashboard", title: "Playground", icon: Home },
+      { href: "/dashboard/history", title: "History", icon: Home },
+      { href: "/dashboard/starred", title: "Starred", icon: Home },
+      { href: "/dashboard/settings", title: "Settings", icon: Settings },
+    ],
+  },
+  {
+    title: "Models",
+    items: [{ href: "/dashboard/models", title: "Models", icon: Home }],
+  },
+  {
+    title: "Documentation",
+    items: [{ href: "/dashboard/docs", title: "Documentation", icon: Home }],
+  },
+  {
+    title: "Settings",
+    items: [
+      {
+        href: "/dashboard/account-settings",
+        title: "Settings",
+        icon: Settings,
+      },
+    ],
+  },
+]
+
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-            <nav className="space-x-4">
-              <a
-                href="/dashboard"
-                className="text-gray-600 hover:text-gray-900"
-              >
-                Home
-              </a>
-              <a
-                href="/dashboard/settings"
-                className="text-gray-600 hover:text-gray-900"
-              >
-                Settings
-              </a>
-            </nav>
-          </div>
-        </div>
-      </header>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {children}
-      </main>
+    <div className="min-h-screen bg-gray-50 flex">
+      <SidebarProvider>
+        <AppSidebar />
+        <main className="w-full">
+          <header className=" border-b border-gray-200 flex h-16 items-center px-3 py-6">
+            <div className="w-full flex items-center gap-3.5">
+              <SidebarTrigger />
+              {children}
+            </div>
+            <div className="flex items-center gap-3.5">
+              <Button variant={"ghost"}>Logout</Button>
+              <Button variant={"ghost"}>Logout</Button>
+            </div>
+          </header>
+        </main>
+      </SidebarProvider>
     </div>
   )
 }

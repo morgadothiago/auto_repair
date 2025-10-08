@@ -6,22 +6,25 @@ import { useAuth } from "../context/AuthContext"
 
 export default function Dashboard() {
   const router = useRouter()
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading, user } = useAuth()
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace("/signin") // usa replace para evitar voltar com back
+      router.replace("/signin")
     }
   }, [isAuthenticated, isLoading, router])
 
-  // Enquanto estiver carregando ou não autenticado, não renderiza nada
-  if (isLoading || !isAuthenticated) {
-    return null
+  if (isLoading) {
+    return <p>Carregando...</p> // ou pode retornar null para nada renderizar
+  }
+
+  if (!isAuthenticated) {
+    return null // não renderiza nada até redirecionar
   }
 
   return (
     <div>
-      <h1>Bem-vindo ao dashboard!</h1>
+      <h1>Bem-vindo ao dashboard!, {user?.role}</h1>
       {/* conteúdo do dashboard */}
     </div>
   )
