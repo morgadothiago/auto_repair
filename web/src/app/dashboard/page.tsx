@@ -1,22 +1,28 @@
 "use client"
 
-import { useSession, signOut } from "next-auth/react"
-import { Button } from "../../components/ui/button"
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "../context/AuthContext"
 
-export default function DashboardPage() {
-  const { data: session } = useSession()
+export default function Dashboard() {
+  const router = useRouter()
+  const { isAuthenticated, isLoading } = useAuth()
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/signin") // usa replace para evitar voltar com back
+    }
+  }, [isAuthenticated, isLoading, router])
+
+  // Enquanto estiver carregando ou não autenticado, não renderiza nada
+  if (isLoading || !isAuthenticated) {
+    return null
+  }
 
   return (
     <div>
-      <h1>Dashboard</h1>
-      <p>Welcome, {session?.user?.email}</p>
-      <p>Role: {session?.user?.role}</p>
-      <Button onClick={() => {
-        console.log("Sign out button clicked!");
-        signOut({ callbackUrl: "/signin" })
-      }}>
-        Sign out
-      </Button>
+      <h1>Bem-vindo ao dashboard!</h1>
+      {/* conteúdo do dashboard */}
     </div>
   )
 }

@@ -35,12 +35,11 @@ export const authOptions: NextAuthOptions = {
             }),
           })
 
-          const responseData = await res.json()
+          const responseData: AuthResponse = await res.json()
 
-          if (!responseData.success) return null
+          if (!responseData.success || !responseData.data) return null
 
-          const user: User = responseData.data.user
-          const token = responseData.data.token
+          const { user, token } = responseData.data
 
           if (!token) return null
 
@@ -69,19 +68,20 @@ export const authOptions: NextAuthOptions = {
         token.role = u.role
         token.name = u.name
         token.email = u.email
+        token.sub = u.id // opcional: garante id no token.sub
       }
       return token
     },
 
     async session({ session, token }) {
       session.user = {
-        id: (token.sub as string) || "", // Use token.sub if you want
-        name: token.name,
-        email: token.email,
-        role: token.role,
-        token: token.accessToken,
+        id: token.sub ?? "",
+        name: token.name ?? "",
+        email: token.email ?? "",
+        role: token.role ?? "",
+        token: token.accessToken ?? "",
       }
-      session.accessToken = token.accessToken
+      session.accessToken = token.accessToken ?? ""
       return session
     },
   },
