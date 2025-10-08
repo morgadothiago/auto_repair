@@ -1,62 +1,97 @@
 "use client"
 
-import {
-  Sidebar,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
-import { Home, Settings } from "lucide-react"
-import { AppSidebar } from "../components/SideBar"
-import { Button } from "@/components/ui/button"
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { LogOut } from "lucide-react"
 
-const sidebarNavItems = [
-  {
-    title: "Platform",
-    items: [
-      { href: "/dashboard", title: "Playground", icon: Home },
-      { href: "/dashboard/history", title: "History", icon: Home },
-      { href: "/dashboard/starred", title: "Starred", icon: Home },
-      { href: "/dashboard/settings", title: "Settings", icon: Settings },
-    ],
-  },
-  {
-    title: "Models",
-    items: [{ href: "/dashboard/models", title: "Models", icon: Home }],
-  },
-  {
-    title: "Documentation",
-    items: [{ href: "/dashboard/docs", title: "Documentation", icon: Home }],
-  },
-  {
-    title: "Settings",
-    items: [
-      {
-        href: "/dashboard/account-settings",
-        title: "Settings",
-        icon: Settings,
-      },
-    ],
-  },
-]
+import Button from "../components/Button"
+import NotificationButton from "../components/Notification"
+import { useEffect, useState } from "react"
+import { Notification as AppNotification } from "../types/notification"
+import { AppSidebar } from "../components/SideBar"
+import { signOut } from "next-auth/react"
+
+// Simulação de API que pode retornar uma nova notificação
+const fetchNotification = async (): Promise<AppNotification | null> => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const shouldAdd = Math.random() < 0.5
+      if (shouldAdd) {
+        const newNotification: AppNotification = {
+          id: Date.now(),
+          title: "Nova notificação",
+          message: "Você recebeu uma nova atualização no sistema.",
+          read: false,
+        }
+        resolve(newNotification)
+      } else {
+        resolve(null)
+      }
+    }, 1500)
+  })
+}
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const [notifications, setNotifications] = useState<AppNotification[]>([
+    {
+      id: 1,
+      title: "Consulta marcada",
+      message: "Você tem uma consulta amanhã às 10h.",
+      read: false,
+    },
+    {
+      id: 2,
+      title: "Atualização disponível",
+      message: "Há uma nova versão do app disponível.",
+      read: true,
+    },
+  ])
+
+  const isNotification = notifications.some((n) => !n.read)
+
+  useEffect(() => {
+    const loadNotification = async () => {
+      const newNotification = await fetchNotification()
+      if (newNotification) {
+        setNotifications((prev) => [...prev, newNotification])
+      }
+    }
+
+    loadNotification()
+    const interval = setInterval(loadNotification, 10000)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <SidebarProvider>
         <AppSidebar />
         <main className="w-full">
-          <header className=" border-b border-gray-200 flex h-16 items-center px-3 py-6">
+          <header className="border-b border-gray-200 flex h-16 items-center px-3 py-6">
             <div className="w-full flex items-center gap-3.5">
               <SidebarTrigger />
               {children}
             </div>
+
             <div className="flex items-center gap-3.5">
-              <Button variant={"ghost"}>Logout</Button>
-              <Button variant={"ghost"}>Logout</Button>
+              <NotificationButton
+                isNotification={isNotification}
+                notifications={notifications}
+              />
+
+              <Button
+                icon={<LogOut />}
+                onClick={() =>
+                  signOut({
+                    callbackUrl: "/signin",
+                  })
+                }
+                className="text-white"
+                variant="default"
+              />
             </div>
           </header>
         </main>
