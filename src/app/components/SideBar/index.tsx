@@ -23,7 +23,6 @@ import { useAuth } from "@/app/context/AuthContext"
 import { useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 
-// Menu items com roles
 export const menuItems = [
   {
     title: "Dashboard",
@@ -60,7 +59,7 @@ export function AppSidebar() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push("/signin") // redireciona para página de login
+      router.push("/signin")
     }
   }, [isAuthenticated, router])
 
@@ -71,10 +70,7 @@ export function AppSidebar() {
           <SidebarGroupLabel className="w-full h-16 flex items-center">
             <SidebarHeader className="px-4 py-2">
               <div className="flex items-center gap-4">
-                {/* Quadrado preto */}
-                <div className="w-10 h-10 rounded-md bg-black"></div>
-
-                {/* Texto ao lado */}
+                <div className="w-8 h-8 rounded-sm bg-white border-black border-[1px] "></div>
                 <h1 className="text-black text-lg font-semibold">
                   Auto Repair
                 </h1>

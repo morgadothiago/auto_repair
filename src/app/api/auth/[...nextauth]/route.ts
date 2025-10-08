@@ -1,13 +1,19 @@
-import NextAuth, { Account, Session } from "next-auth"
+import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { compare } from "bcryptjs"
-import prisma from "@/lib/prisma"
+import type { NextAuthOptions } from "next-auth"
+import type { User } from "@/types/user"
 import { sign } from "jsonwebtoken"
-import { JWT } from "next-auth/jwt"
-import { User } from "@/types/user"
 
+type AuthResponse = {
+  success: boolean
+  data?: {
+    user: User
+    token: string
+  }
+  message?: string
+}
 
-export const authOptions = {
+export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
@@ -18,69 +24,72 @@ export const authOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials, req) {
+      async authorize(credentials): Promise<User | null> {
         if (!credentials?.email || !credentials?.password) {
           return null
         }
 
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email,
-          },
-        })
+        try {
+          const res = await fetch(`http://localhost:3001/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: credentials.email,
+              password: credentials.password,
+            }),
+          })
 
-        if (!user) {
-          throw new Error("No user found with the given email!")
-        }
+          const responseData: AuthResponse = await res.json()
 
-        const checkPassword = await compare(
-          credentials!.password,
-          user.password
-        )
+          if (!responseData.success || !responseData.data) {
+            throw new Error(responseData.message || "Credenciais inválidas.");
+          }
 
-        if (!checkPassword) {
-          throw new Error("Password doesn't match!")
-        }
-        return {
-          email: user.email,
-          name: user.name,
-          id: user.id,
-          role: user.role,
+          const { user, token } = responseData.data
+
+          if (!token) return null
+
+          return { ...user, token }
+        } catch (error) {
+          console.error("Erro ao autenticar:", error)
+          return null
         }
       },
     }),
   ],
 
+  pages: {
+    signIn: "/signin",
+  },
+
   callbacks: {
-    async jwt({ token, user, account }: { token: JWT; user: User; account: Account }) {
+    async jwt({ token, user, account }) {
       if (account && user) {
-          token.accessToken = sign(
-            { userId: user.id, email: user.email, name: user.name, role: user.role },
-            process.env.NEXTAUTH_SECRET as string,
-            { expiresIn: "1h" }
-          );
-          token.id = user.id;
-          token.name = user.name;
-          token.email = user.email;
-          token.role = user.role;
-        }
+        const u = user as User
+        token.accessToken = sign(
+          { userId: u.id, email: u.email, name: u.name, role: u.role },
+          process.env.NEXTAUTH_SECRET as string,
+          { expiresIn: "1h" }
+        )
+        token.role = u.role
+      }
       return token
     },
-    async session({ session, token }: { session: Session; token: JWT }) {
+
+    async session({ session, token }) {
       if (token) {
-        session.user.id = token.id
+        session.user.id = token.id as string
         session.user.name = token.name
-        session.user.email = token.email as string
+        session.user.email = token.email
         session.user.role = token.role as string
-        session.accessToken = token.accessToken as string
+        session.accessToken = token.accessToken
       }
       return session
     },
   },
-  pages: {
-    signIn: "/signin",
-  },
+
+  secret: process.env.NEXTAUTH_SECRET,
 }
 
-const handler = NextAuth(authOptions as any)
+const handler = NextAuth(authOptions)
 export { handler as GET, handler as POST }
