@@ -1,6 +1,5 @@
 "use client"
 
-import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +16,8 @@ import { yupResolver } from "@hookform/resolvers/yup"
 import * as yup from "yup" // <- componente com ícone
 import { Mail, Lock } from "lucide-react" // <- ícones
 import TextInput from "../components/Input"
+import { useAuth } from "../context/AuthContext"
+import { signIn } from "next-auth/react"
 
 // 1. Schema de validação
 const signInSchema = yup.object().shape({
@@ -28,6 +29,7 @@ type SignInFormData = yup.InferType<typeof signInSchema>
 
 export default function LoginPage() {
   const router = useRouter()
+  const { isAuthenticated, isLoading } = useAuth()
 
   const {
     control,
