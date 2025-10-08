@@ -57,11 +57,14 @@ export function AppSidebar() {
   const router = useRouter()
   const pathname = usePathname()
 
+  console.log(user)
+
   useEffect(() => {
+    console.log("User in AppSidebar:", user)
     if (!isAuthenticated) {
       router.push("/signin")
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, router, user])
 
   return (
     <Sidebar>
@@ -81,13 +84,13 @@ export function AppSidebar() {
           <SidebarGroupContent className="px-2">
             {user?.role && (
               <h1 className="text-black text-lg font-semibold mb-4">
-                Área do {user.role === "admin" ? "Administrador" : "Mecanico"}
+                Área do {user.role === "ADMIN" ? "Administrador" : "Mecanico"}
               </h1>
             )}
 
             <SidebarMenu>
               {menuItems
-                .filter((item) => user?.role && item.roles.includes(user.role))
+                .filter((item) => user?.role && item.roles.includes(user.role.toLowerCase()))
                 .map((item) => {
                   const isActive = pathname === item.url
                   return (
