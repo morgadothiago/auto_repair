@@ -1,10 +1,12 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { compare } from "bcryptjs"
-import { connectToDatabase } from "@/lib/db"
-import { sign } from "jsonwebtoken"
+import { PrismaAdapter } from "@next-auth/prisma-adapter"
+import { prisma } from "@/lib/prisma"
+import bcrypt from "bcryptjs"
+import { NextAuthOptions } from "next-auth"
 
-export const authOptions = {
+const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt",
   },
@@ -12,48 +14,47 @@ export const authOptions = {
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+        email: { label: "Email", type: "text" },
+        password: { label: "Senha", type: "password" },
       },
       async authorize(credentials) {
-        const client = await connectToDatabase()
-        const usersCollection = client.db().collection("users")
-        const user = await usersCollection.findOne({ email: credentials?.email })
+        if (!credentials?.email || !credentials?.password) return null
 
-        if (!user) {
-          client.close()
-          throw new Error("No user found with the given email!")
+        // Busca usuário no banco via Prisma
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        })
+
+        if (!user) return null
+
+        // Verifica a senha com bcrypt
+        const isValid = await bcrypt.compare(
+          credentials.password,
+          user.password
+        )
+        if (!isValid) return null
+
+        return {
+          id: user.id.toString(),
+          name: user.name,
+          email: user.email,
+          role: user.role,
         }
-
-        const checkPassword = await compare(credentials!.password, user.password)
-
-        if (!checkPassword) {
-          client.close()
-          throw new Error("Password mismatch!")
-        }
-
-        client.close()
-        return { email: user.email, name: user.name, id: user._id.toString() }
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user, account }) {
-      if (account && user) {
-        token.accessToken = sign(
-          { userId: user.id, email: user.email, name: user.name },
-          process.env.NEXTAUTH_SECRET as string,
-          { expiresIn: "1h" }
-        )
+    async jwt({ token, user }: { token: any; user?: any }) {
+      if (user) {
+        token.id = user.id
+        token.role = user.role
       }
       return token
     },
-    async session({ session, token }) {
-      if (token) {
+    async session({ session, token }: { session: any; token: any }) {
+      if (session.user && token) {
         session.user.id = token.id
-        session.user.name = token.name
-        session.user.email = token.email
-        session.accessToken = token.accessToken
+        session.user.role = token.role
       }
       return session
     },
@@ -61,6 +62,7 @@ export const authOptions = {
   pages: {
     signIn: "/signin",
   },
+  secret: process.env.NEXTAUTH_SECRET,
 }
 
 const handler = NextAuth(authOptions)
