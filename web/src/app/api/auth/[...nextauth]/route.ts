@@ -41,7 +41,9 @@ export const authOptions: NextAuthOptions = {
 
           const responseData: AuthResponse = await res.json()
 
-          if (!responseData.success || !responseData.data) return null
+          if (!responseData.success || !responseData.data) {
+            throw new Error(responseData.message || "Credenciais inválidas.");
+          }
 
           const { user, token } = responseData.data
 

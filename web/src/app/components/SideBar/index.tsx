@@ -57,8 +57,6 @@ export function AppSidebar() {
   const router = useRouter()
   const pathname = usePathname()
 
-
-
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/signin")
@@ -72,7 +70,7 @@ export function AppSidebar() {
           <SidebarGroupLabel className="w-full h-16 flex items-center">
             <SidebarHeader className="px-4 py-2">
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-md bg-black"></div>
+                <div className="w-8 h-8 rounded-sm bg-white border-black border-[1px] "></div>
                 <h1 className="text-black text-lg font-semibold">
                   Auto Repair
                 </h1>
