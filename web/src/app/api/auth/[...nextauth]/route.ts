@@ -1,68 +1,65 @@
 import NextAuth from "next-auth"
-import Credentials from "next-auth/providers/credentials"
-import type { NextAuthOptions } from "next-auth"
-import type { User } from "@/types/user"
+import CredentialsProvider from "next-auth/providers/credentials"
+import { compare } from "bcryptjs"
+import { connectToDatabase } from "@/lib/db"
+import { sign } from "jsonwebtoken"
 
-export const authOptions: NextAuthOptions = {
+export const authOptions = {
+  session: {
+    strategy: "jwt",
+  },
   providers: [
-    Credentials({
+    CredentialsProvider({
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials): Promise<User | null> {
-        if (!credentials?.email || !credentials?.password) return null
+      async authorize(credentials) {
+        const client = await connectToDatabase()
+        const usersCollection = client.db().collection("users")
+        const user = await usersCollection.findOne({ email: credentials?.email })
 
-        try {
-          const res = await fetch(`http://localhost:3001/auth/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: credentials.email,
-              password: credentials.password,
-            }),
-          })
-
-          if (!res.ok) return null
-
-          const user: User = await res.json()
-
-          if (!user?.token) return null
-
-          return user
-        } catch (error) {
-          console.error("Erro ao autenticar:", error)
-          return null
+        if (!user) {
+          client.close()
+          throw new Error("No user found with the given email!")
         }
+
+        const checkPassword = await compare(credentials!.password, user.password)
+
+        if (!checkPassword) {
+          client.close()
+          throw new Error("Password mismatch!")
+        }
+
+        client.close()
+        return { email: user.email, name: user.name, id: user._id.toString() }
       },
     }),
   ],
-
-  pages: {
-    signIn: "/signin", // página de login personalizada
-  },
-  session: {
-    strategy: "jwt",
-  },
-
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        const typedUser = user as User
-        token.accessToken = typedUser.token
-        token.role = typedUser.role
+    async jwt({ token, user, account }) {
+      if (account && user) {
+        token.accessToken = sign(
+          { userId: user.id, email: user.email, name: user.name },
+          process.env.NEXTAUTH_SECRET as string,
+          { expiresIn: "1h" }
+        )
       }
       return token
     },
-
     async session({ session, token }) {
-      if (session.user) {
-        session.user.role = token.role as User["role"]
-        session.accessToken = token.accessToken as string
+      if (token) {
+        session.user.id = token.id
+        session.user.name = token.name
+        session.user.email = token.email
+        session.accessToken = token.accessToken
       }
       return session
     },
+  },
+  pages: {
+    signIn: "/signin",
   },
 }
 
