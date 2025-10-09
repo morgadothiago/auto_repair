@@ -1,19 +1,12 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import type { NextAuthOptions } from "next-auth"
-import type { User } from "@/types/user"
-import { sign } from "jsonwebtoken"
+import { PrismaAdapter } from "@next-auth/prisma-adapter"
+import { prisma } from "@/lib/prisma"
+import bcrypt from "bcryptjs"
+import { NextAuthOptions } from "next-auth"
 
-type AuthResponse = {
-  success: boolean
-  data?: {
-    user: User
-    token: string
-  }
-  message?: string
-}
-
-export const authOptions: NextAuthOptions = {
+const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt",
   },
@@ -21,73 +14,54 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+        email: { label: "Email", type: "text" },
+        password: { label: "Senha", type: "password" },
       },
-      async authorize(credentials): Promise<User | null> {
-        if (!credentials?.email || !credentials?.password) {
-          return null
-        }
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null
 
-        try {
-          const res = await fetch(`http://localhost:3001/auth/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: credentials.email,
-              password: credentials.password,
-            }),
-          })
+        // Busca usuário no banco via Prisma
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        })
 
-          const responseData: AuthResponse = await res.json()
+        if (!user) return null
 
-          if (!responseData.success || !responseData.data) {
-            throw new Error(responseData.message || "Credenciais inválidas.");
-          }
+        // Verifica a senha com bcrypt
+        const isValid = await bcrypt.compare(
+          credentials.password,
+          user.password
+        )
+        if (!isValid) return null
 
-          const { user, token } = responseData.data
-
-          if (!token) return null
-
-          return { ...user, token }
-        } catch (error) {
-          console.error("Erro ao autenticar:", error)
-          return null
+        return {
+          id: user.id.toString(),
+          name: user.name,
+          email: user.email,
+          role: user.role,
         }
       },
     }),
   ],
-
-  pages: {
-    signIn: "/signin",
-  },
-
   callbacks: {
-    async jwt({ token, user, account }) {
-      if (account && user) {
-        const u = user as User
-        token.accessToken = sign(
-          { userId: u.id, email: u.email, name: u.name, role: u.role },
-          process.env.NEXTAUTH_SECRET as string,
-          { expiresIn: "1h" }
-        )
-        token.role = u.role
+    async jwt({ token, user }: { token: any; user?: any }) {
+      if (user) {
+        token.id = user.id
+        token.role = user.role
       }
       return token
     },
-
-    async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string
-        session.user.name = token.name
-        session.user.email = token.email
-        session.user.role = token.role as string
-        session.accessToken = token.accessToken
+    async session({ session, token }: { session: any; token: any }) {
+      if (session.user && token) {
+        session.user.id = token.id
+        session.user.role = token.role
       }
       return session
     },
   },
-
+  pages: {
+    signIn: "/signin",
+  },
   secret: process.env.NEXTAUTH_SECRET,
 }
 
