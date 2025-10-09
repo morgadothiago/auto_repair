@@ -73,7 +73,6 @@ export default function DashboardLayout({
           <header className="border-b border-gray-200 flex h-16 items-center px-3 py-6">
             <div className="w-full flex items-center gap-3.5">
               <SidebarTrigger />
-              {children}
             </div>
 
             <div className="flex items-center gap-3.5">
@@ -94,6 +93,7 @@ export default function DashboardLayout({
               />
             </div>
           </header>
+          {children}
         </main>
       </SidebarProvider>
     </div>

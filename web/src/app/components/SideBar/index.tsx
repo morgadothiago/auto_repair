@@ -50,6 +50,12 @@ export const menuItems = [
     icon: Settings,
     roles: ["admin"],
   },
+  {
+    title: "Usuarios",
+    url: "/dashboard/admin/users",
+    icon: Users,
+    roles: ["admin"],
+  },
 ]
 
 export function AppSidebar() {
@@ -90,7 +96,10 @@ export function AppSidebar() {
 
             <SidebarMenu>
               {menuItems
-                .filter((item) => user?.role && item.roles.includes(user.role.toLowerCase()))
+                .filter(
+                  (item) =>
+                    user?.role && item.roles.includes(user.role.toLowerCase())
+                )
                 .map((item) => {
                   const isActive = pathname === item.url
                   return (
@@ -101,19 +110,11 @@ export function AppSidebar() {
                           className={`flex h-10 items-center gap-2 px-4 py-2 rounded-md transition-colors duration-200 ${
                             isActive
                               ? "bg-black text-white shadow-md"
-                              : "text-gray-700 hover:bg-gray-100 hover:text-black"
+                              : "text-black hover:bg-gray-100 hover:text-black"
                           }`}
                         >
                           <item.icon className="h-5 w-5" />
-                          <span
-                            className={
-                              isActive
-                                ? "text-white font-semibold"
-                                : "text-black"
-                            }
-                          >
-                            {item.title}
-                          </span>
+                          <span className="font-semibold">{item.title}</span>
                         </a>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
