@@ -1,30 +1,33 @@
-import { dirname } from "path"
-import { fileURLToPath } from "url"
-import { FlatCompat } from "@eslint/eslintrc"
+import { fixupConfigRules } from "@eslint/compat";
+import { FlatCompat } from "@eslint/eslintrc";
+import pluginJs from "@eslint/js";
+import globals from "globals";
+import { dirname } from "path";
+import pluginReactConfig from "eslint-plugin-react/configs/recommended.js";
+import tseslint from "typescript-eslint";
+import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const compat = new FlatCompat({
   baseDirectory: __dirname,
-})
+  resolvePluginsRelativeTo: __dirname,
+});
 
-const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+export default tseslint.config(
   {
-    rules: {
-      "@typescript-eslint/no-explicit-any": "off",
+    languageOptions: {
+      globals: globals.browser,
     },
   },
-  {
-    ignores: [
-      "node_modules/**",
-      ".next/**",
-      "out/**",
-      "build/**",
-      "next-env.d.ts",
-    ],
-  },
-]
+  pluginJs.configs.recommended,
+  ...tseslint.configs.recommended,
+  ...fixupConfigRules(pluginReactConfig),
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
 
-export default eslintConfig
+  // Ignore all files in the generated folder
+  {
+    ignores: ["src/generated/**"],
+  },
+);

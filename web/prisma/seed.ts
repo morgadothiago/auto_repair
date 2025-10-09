@@ -21,7 +21,6 @@ async function main() {
 main()
   .then(() => prisma.$disconnect())
   .catch((e) => {
-    console.error("❌ Erro ao criar usuário:", e)
     prisma.$disconnect()
     process.exit(1)
   })
